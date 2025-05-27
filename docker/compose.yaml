@@ -2,7 +2,14 @@ name: pgai
 
 services:
 
-  db:
+  adminer:
+    #container_name: adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8100:8080
+
+  pg:
     image: timescale/timescaledb-ha:pg17
     environment:
       POSTGRES_PASSWORD: postgres
@@ -14,12 +21,60 @@ services:
   vectorizer-worker:
     image: timescale/pgai-vectorizer-worker:latest
     environment:
-      PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@db:5432/postgres
+      PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@pg:5432/postgres
       OLLAMA_HOST: http://ollama:11434
     command: [ "--poll-interval", "5s" ]
 
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:0.7.1
+    volumes:
+      - ./run/ollama/:/root/.ollama/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all 
+              capabilities: [gpu]
     
+  ollama2:
+    build:
+      context: .
+      dockerfile_inline: |
+        #FROM ollama/ollama:0.7.1
+        FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu24.04
+
+        RUN apt install -y curl gpg
+        RUN curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey 
+          | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg 
+          && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list
+          | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' 
+          | tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        RUN sed -i -e '/experimental/ s/^#//g' /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        RUN apt update && apt upgrade -y
+        RUN apt install -y nvidia-container-toolkit
+
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    #container_name: ollama-webui
+    volumes:
+      - ./ollama/ollama-webui:/app/backend/data
+    depends_on:
+      - ollama
+    ports:
+      - 8101:8080
+    environment: # https://docs.openwebui.com/getting-started/env-configuration#default_models
+      - OLLAMA_BASE_URLS=http://host.docker.internal:7869 #comma separated ollama hosts
+      - ENV=dev
+      - WEBUI_AUTH=False
+      - WEBUI_NAME=valiantlynx AI
+      - WEBUI_URL=http://localhost:8080
+      - WEBUI_SECRET_KEY=t0p-s3cr3t
+    #extra_hosts:
+    #  - host.docker.internal:host-gateway
+    #restart: unless-stopped
+    #networks:
+    #  - ollama-docker
+
 volumes:
   pg_data:
