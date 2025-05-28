@@ -1,9 +1,3 @@
-CREATE TABLE doc_uri (
-    id SERIAL PRIMARY KEY,
-    uri TEXT,
-    metadata JSONB
-);
-
 docker compose run --rm --entrypoint "python -m pgai install -d postgres://postgres:postgres@pg:5432/postgres" vectorizer-worker
 psql postgres://postgres:postgres@pg:5432/postgres
 
@@ -23,6 +17,11 @@ FROM blog_contents_embeddings
 ORDER BY distance
 LIMIT 10;
 
+CREATE TABLE doc_uri (
+    id SERIAL PRIMARY KEY,
+    uri TEXT,
+    metadata JSONB
+);
 
 INSERT INTO doc_uri ("https://noble-a.h3.gizmo-thailand.com/wp-content/uploads/2025/04/img-01.jpg",'{"test": [1,1,1]}');
 INSERT INTO doc_uri ("https://noble-a.h3.gizmo-thailand.com/wp-content/uploads/2025/04/img-02.jpg",'{"test": [2,2,2]}');

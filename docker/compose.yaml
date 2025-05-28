@@ -2,14 +2,8 @@ name: pgai
 
 services:
 
-  adminer:
-    #container_name: adminer
-    image: adminer
-    restart: always
-    ports:
-      - 8100:8080
-
   pg:
+    container_name: pg
     image: timescale/timescaledb-ha:pg17
     environment:
       POSTGRES_PASSWORD: postgres
@@ -19,13 +13,17 @@ services:
     - pg_data:/home/postgres/pgdata/data
 
   vectorizer-worker:
-    image: timescale/pgai-vectorizer-worker:latest
+    container_name: vectorizer-worker
+    image: timescale/pgai-vectorizer-worker:v0.10.5
     environment:
       PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@pg:5432/postgres
       OLLAMA_HOST: http://ollama:11434
     command: [ "--poll-interval", "5s" ]
+    depends_on:
+      - pg
 
   ollama:
+    container_name: ollama
     image: ollama/ollama:0.7.1
     volumes:
       - ./run/ollama/:/root/.ollama/
@@ -36,35 +34,19 @@ services:
             - driver: nvidia
               count: all 
               capabilities: [gpu]
-    
-  ollama2:
-    build:
-      context: .
-      dockerfile_inline: |
-        #FROM ollama/ollama:0.7.1
-        FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu24.04
-
-        RUN apt install -y curl gpg
-        RUN curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey 
-          | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg 
-          && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list
-          | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' 
-          | tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-        RUN sed -i -e '/experimental/ s/^#//g' /etc/apt/sources.list.d/nvidia-container-toolkit.list
-        RUN apt update && apt upgrade -y
-        RUN apt install -y nvidia-container-toolkit
 
   ollama-webui:
+    container_name: ollama-webui
     image: ghcr.io/open-webui/open-webui:main
-    #container_name: ollama-webui
     volumes:
-      - ./ollama/ollama-webui:/app/backend/data
+      - ./run/ollama-webui/backend-data:/app/backend/data
     depends_on:
       - ollama
     ports:
-      - 8101:8080
+      - 8102:8080
     environment: # https://docs.openwebui.com/getting-started/env-configuration#default_models
-      - OLLAMA_BASE_URLS=http://host.docker.internal:7869 #comma separated ollama hosts
+      #- OLLAMA_BASE_URLS=http://host.docker.internal:7869 #comma separated ollama hosts
+      - OLLAMA_BASE_URLS=http://localhost:11434 #comma separated ollama hosts
       - ENV=dev
       - WEBUI_AUTH=False
       - WEBUI_NAME=valiantlynx AI
@@ -75,6 +57,47 @@ services:
     #restart: unless-stopped
     #networks:
     #  - ollama-docker
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8101:8080
+    depends_on:
+      - pg
+
+  ngrok:
+    container_name: ngrok
+    environment:
+      - NGROK_AUTHTOKEN=2dX3AiyaMZ9bc5JFBUPre9SRd0L_kKit9xXv5s7hf7E8k8Ei
+    image: ngrok/ngrok:latest
+    command: 'http fastapi:8100'
+    ports:
+      - 8109:80
+    expose:
+      - 8109
+    depends_on:
+      - fastapi
+      
+
+  fastapi:
+    container_name: fastapi
+    volumes:
+      - ./fastapi/app:/code/app
+    ports:
+      - 8100:8100
+    build:
+      context: .
+      #dockerfile: ./fastapi/Dockerfile
+      dockerfile_inline: |
+        FROM python:3.9
+        WORKDIR /code
+        COPY ./fastapi/requirements.txt /code/requirements.txt
+        RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+        CMD ["fastapi", "run", "/code/app/main.py", "--port", "8100"]
+        
+        #COPY ./fastapi/app /code/app
 
 volumes:
   pg_data:
