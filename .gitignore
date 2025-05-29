@@ -1,1 +1,3 @@
 #/docker/run
+/docker/fastapi/app/__pycache__
+/docker/fastapi/app/__pycache__

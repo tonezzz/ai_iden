@@ -79,22 +79,28 @@ services:
       - 8109
     depends_on:
       - fastapi
-      
+
 
   fastapi:
     container_name: fastapi
+    environment:
+      - DEBUG=1
     volumes:
       - ./fastapi/app:/code/app
+      - ./run/fastapi/img:/code/img
+      - ./run/fastapi/config:/root/.config/Ultralytics
     ports:
       - 8100:8100
     build:
       context: .
       #dockerfile: ./fastapi/Dockerfile
       dockerfile_inline: |
-        FROM python:3.9
+        FROM python:3.11.9
         WORKDIR /code
         COPY ./fastapi/requirements.txt /code/requirements.txt
+        RUN pip install --upgrade pip
         RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+        RUN apt update && apt install -y --upgrade libgl1
         CMD ["fastapi", "run", "/code/app/main.py", "--port", "8100"]
         
         #COPY ./fastapi/app /code/app
