@@ -45,28 +45,35 @@ def test():
     record = cursor.fetchall()
     return {"data": record}
 
-@app.get("/doc_uri/{item_id}")
-def doc_uri(item_id: str, fields: str = "*"):
-    cursor.execute("SELECT " + fields + " FROM doc_uri WHERE id=" + item_id + " LIMIT 1;")
+@app.get("/image/{id}")
+def img(id: str, fields: str = "*"):
+    #cursor.execute("SELECT " + fields + " FROM doc_uri WHERE id=" + id + " LIMIT 1;")
+    #record = cursor.fetchone()
+    return { "data": get_img(id,fields) }
+
+def get_img(id,fields="*"):
+    cursor.execute("SELECT " + fields + " FROM doc_uri WHERE id=" + id + " LIMIT 1;")
     record = cursor.fetchone()
-    return { "data": record, "fields": fields, "item_id": item_id }
+    if record:
+        return record
+    else:
+        return None 
 
+def get_img_url(id):
+    return get_img(id, "uri")
 
-@app.get("/detect3/{item_id}")
-def detect3(item_id: str, fields: str = "uri"):
-    url = "https://predict.ultralytics.com"
-    headers = {"x-api-key": "222929611344feaab98ebe63d1c232391390749c14"}
-    #data0 = {"model": "https://hub.ultralytics.com/models/ahJ26xzlb1ncruCZlpTv", "imgsz": 640, "conf": 0.25, "iou": 0.45}
-    data0 = {"model": "https://hub.ultralytics.com/models/ahJ26xzlb1ncruCZlpTv", "imgsz": 640, "conf": 0.25, "iou": 0.45}
-    #data = {"jsonData": json.dumps( { "data": data0 } ) }
-    data = {"jsonData": json.dumps( data0 ) }
-    files = {'file0': ('image.jpg',open('/code/img/image1.jpg', 'rb')),}
-    with open("/code/img/image1.jpg") as f:
-        response = requests.post(url, headers=headers, data=data, files=files)
-    response.raise_for_status()
-    # Print inference results
-    print(json.dumps(response.json(), indent=2))
-    return { "data": response, "item_id": item_id}
+def set_default(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    raise TypeError
+
+@app.get("/detect/{id}")
+async def detect(id: str, fields: str = "uri"):
+    img_url = get_img_url(id)
+    rs = model(img_url, verbose=True, save=True)
+    #rs = rs0.boxes[0].to_json(orient="records")
+    return { "data": rs.json(), "prms": {"id": id, "fields": fields} }
+    #return { "data": json.dumps(results,default=set_default), "prms": {"id": id, "fields": fields} }
     
 @app.get("/detect2/{item_id}")
 def detect2(item_id: str, fields: str = "uri"):
@@ -97,10 +104,26 @@ def detect2(item_id: str, fields: str = "uri"):
 
     return { "data": response, "item_id": item_id, "file_url": file_url }
 
-@app.get("/detect/{item_id}")
+@app.get("/detect3/{item_id}")
+def detect3(item_id: str, fields: str = "uri"):
+    url = "https://predict.ultralytics.com"
+    headers = {"x-api-key": "222929611344feaab98ebe63d1c232391390749c14"}
+    #data0 = {"model": "https://hub.ultralytics.com/models/ahJ26xzlb1ncruCZlpTv", "imgsz": 640, "conf": 0.25, "iou": 0.45}
+    data0 = {"model": "https://hub.ultralytics.com/models/ahJ26xzlb1ncruCZlpTv", "imgsz": 640, "conf": 0.25, "iou": 0.45}
+    #data = {"jsonData": json.dumps( { "data": data0 } ) }
+    data = {"jsonData": json.dumps( data0 ) }
+    files = {'file0': ('image.jpg',open('/code/img/image1.jpg', 'rb')),}
+    with open("/code/img/image1.jpg") as f:
+        response = requests.post(url, headers=headers, data=data, files=files)
+    response.raise_for_status()
+    # Print inference results
+    print(json.dumps(response.json(), indent=2))
+    return { "data": response, "item_id": item_id}
+
+@app.get("/detect5/{item_id}")
 def detect(item_id: str, fields: str = "uri"):
     results = model(img1_url, save=True, save_txt=True, save_conf=True, verbose=False)
-    return { "data": results }
+    return { "data": "results" }
     #Get the uri
     cursor.execute("SELECT " + fields + " FROM doc_uri WHERE id=" + item_id + " LIMIT 1;")
     record = cursor.fetchone()

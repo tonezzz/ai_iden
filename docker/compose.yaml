@@ -80,7 +80,6 @@ services:
     depends_on:
       - fastapi
 
-
   fastapi:
     container_name: fastapi
     environment:
@@ -95,14 +94,19 @@ services:
       context: .
       #dockerfile: ./fastapi/Dockerfile
       dockerfile_inline: |
-        FROM python:3.11.9
-        WORKDIR /code
+        FROM python:3.11.9 AS my_python_311
+        RUN apt update && apt install -y libgl1
         COPY ./fastapi/requirements.txt /code/requirements.txt
         RUN pip install --upgrade pip
-        RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
-        RUN apt update && apt install -y --upgrade libgl1
+        WORKDIR /code
+
+        FROM my_python_311 AS fastapi 
+        RUN pip install -r /code/requirements.txt
+        RUN pip install fastapi[standard]
+        RUN pip install ultralytics-thop ultralytics 
+
         CMD ["fastapi", "run", "/code/app/main.py", "--port", "8100"]
-        
+       
         #COPY ./fastapi/app /code/app
 
 volumes:
