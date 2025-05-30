@@ -13,6 +13,7 @@ services:
     - pg_data:/home/postgres/pgdata/data
 
   vectorizer-worker:
+    profiles: [future]
     container_name: vectorizer-worker
     image: timescale/pgai-vectorizer-worker:v0.10.5
     environment:
