@@ -10,11 +10,11 @@ matplotlib
 pandas
 pillow
 psutil
-pytorch
 pyyaml
 scipy
 seaborn
 requests
+torch
 torchaudio
 tqdm
 opencv-python-headless

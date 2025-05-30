@@ -86,9 +86,9 @@ services:
     environment:
       - DEBUG=1
     volumes:
-      - ./fastapi/app:/code/app
-      - ./run/fastapi/img:/code/img
       - ./run/fastapi/config:/root/.config/Ultralytics
+      - ./run/fastapi:/code
+      - ./fastapi/app:/code/app
     ports:
       - 8100:8100
     build:
