@@ -36,6 +36,38 @@ services:
               count: all 
               capabilities: [gpu]
 
+  llamaindex:
+    container_name: llamaindex
+    ports:
+      - "3000:3000"
+    #volumes:
+    #  - ./run/llamaindex/cache:/usr/src/app/cache
+    #  - ./chat-llamaindex/datasources:/usr/src/app/datasources
+    #env_file:
+    #  - ./chat-llamaindex/.env.dev
+    build:
+      context: ./llamaindex
+      dockerfile_inline: |
+        FROM python:3.11.9 AS my_llamaindex
+        RUN apt update && apt install -y libgl1
+        RUN pip install --upgrade pip
+
+        # custom selection of integrations to work with core
+        RUN pip install llama-index-core
+        RUN pip install llama-index-llms-openai
+        RUN pip install llama-index-llms-replicate
+        RUN pip install llama-index-embeddings-huggingface
+
+        WORKDIR /code
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all 
+              capabilities: [gpu]
+
   ollama-webui:
     container_name: ollama-webui
     image: ghcr.io/open-webui/open-webui:main
@@ -101,10 +133,17 @@ services:
         RUN pip install --upgrade pip
         WORKDIR /code
 
-        FROM my_python_311 AS fastapi 
-        RUN pip install -r /code/requirements.txt
+        FROM my_python_311 AS my_python_311_ai 
+        #RUN pip install -r /code/requirements.txt
+        RUN pip install uvicorn[standard] psycopg2 pydantic
+        RUN pip install torch torchvision numpy matplotlib pandas pillow psutil
+        RUN pip install pyyaml scipy seaborn requests torch torchaudio tqdm
+        RUN pip install opencv-python-headless
+
+        FROM my_python_311_ai AS my_python_311_fastapi
         RUN pip install fastapi[standard]
-        RUN pip install ultralytics-thop ultralytics 
+        RUN pip install ultralytics-thop ultralytics
+        RUN pip install supervision
 
         CMD ["fastapi", "run", "/code/app/main.py", "--port", "8100"]
        
