@@ -2,6 +2,18 @@ name: pgai
 
 services:
 
+  fastapi_yolo:
+    container_name: fastapi_yolo
+    image: fastapi_yolo:latest
+    command: tail -F /var/log/alternatives.log
+    environment:
+      - YOLO_MODEL=ultralytics/yolov8n-pose
+      - YOLO_DEVICE=cpu
+    ports:
+      - 8103:8000
+    volumes:
+      - ./run/yolo/data:/app/data
+
   pg:
     container_name: pg
     image: timescale/timescaledb-ha:pg17
@@ -22,6 +34,22 @@ services:
     command: [ "--poll-interval", "5s" ]
     depends_on:
       - pg
+
+  llama_fastapi:
+    container_name: llama_fastapi
+    image: ollama_fastapi:latest
+    ports:
+      - "8104:11434"
+      - "8105:7869"
+    volumes:
+      - ./run/ollama/:/root/.ollama/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all 
+              capabilities: [gpu]
 
   ollama:
     container_name: ollama

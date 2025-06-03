@@ -50,3 +50,14 @@ async def detect2(id: str, fields: str = "uri"):
     #    ret.append(item)
     #return ret
     #return { results[0][0].to_json(normalize=True) {}
+
+###########
+@app.get("/yolo/detect/{id}")
+async def yolo_detect(id: str, fields: str = "uri"):
+    img_url = db_get_img_url(cursor,id)
+    api_url = "http://yolo:8103/detect"
+    response = requests.get(api_url, params={"id": id, "fields": fields})
+    return response
+    #results = model_detect(model,img_url)
+    #if(results.boxes):
+    #    return JSONResponse(content=jsonable_encoder(results))
