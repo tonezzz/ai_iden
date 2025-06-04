@@ -40,8 +40,9 @@ async def detect(id: str, fields: str = "uri"):
 async def detect2(id: str, fields: str = "uri"):
     img_url = db_get_img_url(cursor,id)
     results = model_detect(model,img_url)
-    if(results.boxes):
-        return JSONResponse(content=jsonable_encoder(results))
+    return results
+    #if(results.boxes):
+    #    return JSONResponse(content=jsonable_encoder(results))
     #return json.dumps(results)
     #rs = json.loads(results[0].to_json() )
     #ret = []
